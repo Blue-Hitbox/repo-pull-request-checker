@@ -4,40 +4,50 @@ A GitHub App and GitHub Action that automatically reviews pull requests using AI
 
 This project is organized as a monorepo:
 - `apps/bot`: The GitHub App (Probot).
-- `apps/web`: The Dashboard website for users to provide their own keys.
+- `apps/web`: The Dashboard website (SvelteKit + PostgreSQL).
 - `packages/ai-core`: Shared AI provider logic.
 
 ## Features
 
 - **Automated Reviews**: Triggered on pull request events.
 - **Multiple AI Providers**: Supports OpenAI, Claude, and OpenRouter.
-- **Bring Your Own Key**: Users provide their API keys via a central web dashboard.
+- **Bring Your Own Key**: Users provide their API keys via a SvelteKit dashboard.
+- **PostgreSQL Storage**: Securely store and encrypt user keys using Prisma.
 - **Monorepo Architecture**: Scalable and easy to manage.
 
 ## Integration Methods
 
 ### 1. GitHub App (with Dashboard)
 
-The GitHub App uses a central dashboard where users can securely save their API keys.
+#### Prerequisites
+
+- **PostgreSQL**: A running instance of PostgreSQL.
+- **Docker**: (Optional) Use the provided `docker-compose.yml`.
 
 #### Dashboard Setup (`apps/web`)
 
 1. Go to `apps/web`.
-2. Install dependencies: `npm install`.
-3. Start the dashboard: `npm run dev` (runs on http://localhost:3000).
-4. Users can go to the homepage and save their API keys linked to their GitHub Username or Organization.
+2. Configure `.env`:
+   ```bash
+   DATABASE_URL="postgresql://user:password@localhost:5432/ai_reviewer?schema=public"
+   ENCRYPTION_KEY="your-secret-key-for-encryption"
+   DASHBOARD_API_SECRET="shared-secret-between-bot-and-dashboard"
+   ```
+3. Run migrations: `npx prisma migrate dev`.
+4. Start the dashboard: `npm run dev` (runs on http://localhost:5173).
 
 #### Bot Setup (`apps/bot`)
 
-1. Go to `apps/bot`.
-2. Create a GitHub App in your developer settings.
-3. Configure the `.env` file (see `apps/bot/.env.example`).
-4. Set `DASHBOARD_URL` to your running dashboard instance.
-5. Start the bot: `npm run dev`.
+1. Configure `.env`:
+   ```bash
+   DASHBOARD_URL=http://localhost:5173
+   DASHBOARD_API_SECRET=shared-secret-between-bot-and-dashboard
+   ```
+2. Start the bot: `npm run dev`.
 
 ### 2. GitHub Action
 
-The GitHub Action is an alternative that uses GitHub Secrets for API keys.
+The GitHub Action uses GitHub Secrets for API keys.
 
 ```yaml
 uses: Blue-Hitbox/repo-pull-request-checker/apps/bot@main
@@ -46,32 +56,11 @@ with:
   api_key: ${{ secrets.AI_API_KEY }}
 ```
 
-## Repository Configuration
+## Security
 
-Users can customize the review by creating a `.github/ai-reviewer.yml` file in their repository:
-
-```yaml
-provider: claude
-model: claude-3-5-sonnet-20240620
-```
-
-*Note: The `apiKey` field in the config file is no longer supported for security reasons. Use the Dashboard to provide keys for the App.*
-
-## Development
-
-```bash
-# Install all dependencies
-npm install
-
-# Build all packages
-npm run build
-
-# Start the dashboard
-npm run start --workspace=@ai-reviewer/web
-
-# Start the bot
-npm run start --workspace=@ai-reviewer/bot
-```
+- **Encryption**: API keys are encrypted at rest in the PostgreSQL database using AES encryption.
+- **Authentication**: Communication between the bot and the dashboard is secured via `DASHBOARD_API_SECRET`.
+- **Hashed Verification**: Keys are also hashed to prevent duplicate entries.
 
 ## License
 
