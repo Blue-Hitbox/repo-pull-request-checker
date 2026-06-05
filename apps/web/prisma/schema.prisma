@@ -13,8 +13,32 @@ model User {
   username  String
   createdAt DateTime @default(now())
   apiKeys   ApiKey[]
+  tokens    CliToken[]
+  repos     Repository[]
 
   @@map("users")
+}
+
+model CliToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@map("cli_tokens")
+}
+
+model Repository {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String   // full name e.g. "owner/repo"
+  isEnabled Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, name])
+  @@map("repositories")
 }
 
 model ApiKey {
@@ -22,9 +46,9 @@ model ApiKey {
   userId     String
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider   String
-  keyHash    String    // Hashed for verification
-  encryptedKey String  // Encrypted for retrieval by the bot
-  keyPrefix  String    // e.g. "sk-..." for display
+  keyHash    String
+  encryptedKey String
+  keyPrefix  String
   label      String?
   createdAt  DateTime  @default(now())
   lastUsed   DateTime?

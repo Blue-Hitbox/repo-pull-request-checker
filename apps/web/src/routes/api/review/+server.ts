@@ -9,13 +9,35 @@ export const POST: RequestHandler = async ({ request }) => {
 	const authHeader = request.headers.get('authorization');
 	const apiSecret = env.DASHBOARD_API_SECRET;
 
-	if (apiSecret && authHeader !== `Bearer ${apiSecret}`) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
-	}
+    let user: any;
+
+    if (authHeader?.startsWith('Bearer ')) {
+        const tokenValue = authHeader.substring(7);
+
+        // 1. Check if it's the dashboard-bot shared secret
+        if (apiSecret && tokenValue === apiSecret) {
+            // Authorized bot, owner must be provided in body
+        } else {
+            // 2. Check if it's a CLI token
+            const cliToken = await prisma.cliToken.findUnique({
+                where: { token: tokenValue },
+                include: { user: true }
+            });
+            if (cliToken) {
+                user = cliToken.user;
+            } else {
+                return json({ error: 'Unauthorized' }, { status: 401 });
+            }
+        }
+    } else {
+        return json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
 	const { owner, provider: providerName, model: modelName, diff } = await request.json();
 
-	if (!owner || !diff) {
+    const targetOwner = user ? user.username : owner;
+
+	if (!targetOwner || !diff) {
 		return json({ error: 'Missing owner or diff' }, { status: 400 });
 	}
 
@@ -23,7 +45,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	const apiKeyRecord = await prisma.apiKey.findFirst({
 		where: {
 			user: {
-				username: owner
+				username: targetOwner
 			},
 			provider: providerName || 'openai'
 		}
@@ -32,13 +54,11 @@ export const POST: RequestHandler = async ({ request }) => {
 	let apiKey: string | undefined;
 
 	if (apiKeyRecord) {
-		// Decrypt the key
 		const encryptionKey = env.ENCRYPTION_KEY || 'default-secret';
 		const bytes = CryptoJS.AES.decrypt(apiKeyRecord.encryptedKey, encryptionKey);
 		apiKey = bytes.toString(CryptoJS.enc.Utf8);
 	}
 
-	// 2. Perform the review using @ai-reviewer/core
 	try {
 		const provider = getProvider({
 			provider: providerName,

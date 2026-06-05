@@ -2,6 +2,8 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import { execSync } from 'child_process';
 import axios from 'axios';
 import dotenv from 'dotenv';
@@ -9,6 +11,18 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const program = new Command();
+const CONFIG_PATH = path.join(os.homedir(), '.ai-review-config.json');
+
+function saveConfig(config: any) {
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+}
+
+function loadConfig() {
+  if (fs.existsSync(CONFIG_PATH)) {
+    return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+  }
+  return {};
+}
 
 program
   .name('ai-review')
@@ -16,16 +30,39 @@ program
   .version('1.0.0');
 
 program
+  .command('login <token>')
+  .description('Login to the dashboard with a CLI token')
+  .action(async (token) => {
+    const dashboardUrl = process.env.DASHBOARD_URL || "http://localhost:5173";
+    try {
+      console.log(chalk.blue('Verifying token...'));
+      const response = await axios.post(`${dashboardUrl}/api/tokens/verify`, { token });
+
+      if (response.data.success) {
+        saveConfig({ token, username: response.data.username });
+        console.log(chalk.green(`Successfully logged in as ${response.data.username}`));
+      } else {
+        console.error(chalk.red('Invalid token.'));
+      }
+    } catch (error: any) {
+      console.error(chalk.red(`Login failed: ${error.message}`));
+    }
+  });
+
+program
   .command('diff')
   .description('Review local git changes')
-  .option('-o, --owner <owner>', 'GitHub/GitLab username or organization', process.env.AI_OWNER)
+  .option('-o, --owner <owner>', 'GitHub/GitLab username or organization')
   .option('-s, --staged', 'Review staged changes')
   .option('-p, --provider <provider>', 'AI provider (openai, claude, openrouter)', process.env.AI_PROVIDER || 'openai')
   .option('-m, --model <model>', 'AI model to use')
   .action(async (options) => {
     try {
-      if (!options.owner) {
-        throw new Error('Owner is required. Use --owner or set AI_OWNER env var.');
+      const config = loadConfig();
+      const owner = options.owner || config.username;
+
+      if (!owner && !config.token) {
+        throw new Error('Owner is required or you must be logged in. Use --owner or "ai-review login <token>".');
       }
 
       const diffCommand = options.staged ? 'git diff --staged' : 'git diff';
@@ -36,7 +73,7 @@ program
         return;
       }
 
-      await performReview(diff, options);
+      await performReview(diff, { ...options, owner, token: config.token });
     } catch (error: any) {
       console.error(chalk.red(`Error: ${error.message}`));
     }
@@ -45,13 +82,16 @@ program
 program
   .command('stdin')
   .description('Review diff from stdin')
-  .option('-o, --owner <owner>', 'GitHub/GitLab username or organization', process.env.AI_OWNER)
+  .option('-o, --owner <owner>', 'GitHub/GitLab username or organization')
   .option('-p, --provider <provider>', 'AI provider (openai, claude, openrouter)', process.env.AI_PROVIDER || 'openai')
   .option('-m, --model <model>', 'AI model to use')
   .action(async (options) => {
     try {
-      if (!options.owner) {
-        throw new Error('Owner is required. Use --owner or set AI_OWNER env var.');
+      const config = loadConfig();
+      const owner = options.owner || config.username;
+
+      if (!owner && !config.token) {
+        throw new Error('Owner is required or you must be logged in. Use --owner or "ai-review login <token>".');
       }
 
       const diff = fs.readFileSync(0, 'utf8');
@@ -60,15 +100,16 @@ program
         return;
       }
 
-      await performReview(diff, options);
+      await performReview(diff, { ...options, owner, token: config.token });
     } catch (error: any) {
       console.error(chalk.red(`Error: ${error.message}`));
     }
   });
 
 async function performReview(diff: string, options: any) {
-  const dashboardUrl = process.env.DASHBOARD_URL || "http://localhost:3000";
+  const dashboardUrl = process.env.DASHBOARD_URL || "http://localhost:5173";
   const apiSecret = process.env.DASHBOARD_API_SECRET;
+  const token = options.token || apiSecret;
 
   console.log(chalk.blue(`Requesting review from dashboard for ${options.owner}...`));
 
@@ -79,7 +120,7 @@ async function performReview(diff: string, options: any) {
       provider: options.provider,
       model: options.model
     }, {
-      headers: apiSecret ? { 'Authorization': `Bearer ${apiSecret}` } : {}
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
     });
 
     console.log(chalk.green('\n--- AI Code Review ---\n'));
