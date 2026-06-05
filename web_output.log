@@ -1,0 +1,13 @@
+
+> @ai-reviewer/web@1.0.0 dev
+> ts-node src/index.ts
+
+Dashboard listening at http://localhost:3000
+Terminated
+npm error Lifecycle script `dev` failed with error:
+npm error code 143
+npm error path /app/apps/web
+npm error workspace @ai-reviewer/web@1.0.0
+npm error location /app/apps/web
+npm error command failed
+npm error command sh -c ts-node src/index.ts

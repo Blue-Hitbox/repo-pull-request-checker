@@ -1,89 +1,77 @@
-# AI GitHub Code Reviewer
+# AI GitHub Code Reviewer (Monorepo)
 
-A GitHub App and GitHub Action that automatically reviews pull requests using AI. It supports OpenAI, Claude (Anthropic), and OpenRouter, allowing you to bring your own API keys.
+A GitHub App and GitHub Action that automatically reviews pull requests using AI. It supports OpenAI, Claude (Anthropic), and OpenRouter.
+
+This project is organized as a monorepo:
+- `apps/bot`: The GitHub App (Probot).
+- `apps/web`: The Dashboard website for users to provide their own keys.
+- `packages/ai-core`: Shared AI provider logic.
 
 ## Features
 
 - **Automated Reviews**: Triggered on pull request events.
 - **Multiple AI Providers**: Supports OpenAI, Claude, and OpenRouter.
-- **Bring Your Own Key**: Provide your API key via repository configuration or GitHub Secrets.
-- **Actionable Feedback**: Focuses on bugs, security, and performance.
+- **Bring Your Own Key**: Users provide their API keys via a central web dashboard.
+- **Monorepo Architecture**: Scalable and easy to manage.
 
-## Choose Your Integration
+## Integration Methods
 
-You can use this tool either as a **GitHub App** (centrally hosted) or a **GitHub Action** (run in your own CI).
+### 1. GitHub App (with Dashboard)
 
----
+The GitHub App uses a central dashboard where users can securely save their API keys.
 
-### Option 1: GitHub Action (Recommended for Security)
+#### Dashboard Setup (`apps/web`)
 
-Using the GitHub Action is the most secure way to "bring your own key" because your API key is stored in your own repository's secrets.
+1. Go to `apps/web`.
+2. Install dependencies: `npm install`.
+3. Start the dashboard: `npm run dev` (runs on http://localhost:3000).
+4. Users can go to the homepage and save their API keys linked to their GitHub Username or Organization.
 
-#### Setup
+#### Bot Setup (`apps/bot`)
 
-1. In your repository, go to **Settings > Secrets and variables > Actions**.
-2. Add a new repository secret named `AI_API_KEY` with your AI provider's API key.
-3. Create a workflow file (e.g., `.github/workflows/ai-review.yml`):
+1. Go to `apps/bot`.
+2. Create a GitHub App in your developer settings.
+3. Configure the `.env` file (see `apps/bot/.env.example`).
+4. Set `DASHBOARD_URL` to your running dashboard instance.
+5. Start the bot: `npm run dev`.
+
+### 2. GitHub Action
+
+The GitHub Action is an alternative that uses GitHub Secrets for API keys.
 
 ```yaml
-name: AI Code Review
-on:
-  pull_request:
-    types: [opened, synchronize]
-
-jobs:
-  review:
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-      contents: read
-    steps:
-      - name: AI Reviewer
-        uses: Blue-Hitbox/repo-pull-request-checker@main # Use the latest version
-        with:
-          provider: 'openai' # or 'claude', 'openrouter'
-          model: 'gpt-4o'
-          api_key: ${{ secrets.AI_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+uses: Blue-Hitbox/repo-pull-request-checker/apps/bot@main
+with:
+  provider: 'openai'
+  api_key: ${{ secrets.AI_API_KEY }}
 ```
 
----
-
-### Option 2: GitHub App
-
-The GitHub App is useful if you want to manage multiple repositories from a single installation.
-
-#### Setup
-
-1. Create a GitHub App in your developer settings.
-2. **Permissions**: Pull requests (write), Contents (read), Metadata (read).
-3. **Events**: Pull request.
-4. Deploy the app to a server (e.g., Vercel, Railway, or your own VPS).
-5. Configure the server using a `.env` file (see `.env.example`).
-
-#### Per-Repository Configuration
+## Repository Configuration
 
 Users can customize the review by creating a `.github/ai-reviewer.yml` file in their repository:
 
 ```yaml
 provider: claude
 model: claude-3-5-sonnet-20240620
-apiKey: your-api-key-here # ⚠️ Warning: Plain text keys in repo are NOT recommended. Use the GitHub Action for better security.
 ```
 
-## Configuration Summary
+*Note: The `apiKey` field in the config file is no longer supported for security reasons. Use the Dashboard to provide keys for the App.*
 
-### AI Providers
+## Development
 
-- `openai`: Requires `OPENAI_API_KEY`.
-- `claude` / `anthropic`: Requires `ANTHROPIC_API_KEY`.
-- `openrouter`: Requires `OPENROUTER_API_KEY`.
+```bash
+# Install all dependencies
+npm install
 
-### Security Note
+# Build all packages
+npm run build
 
-When using the **GitHub App** method, we strongly recommend against placing your `apiKey` in plain text in the `.github/ai-reviewer.yml` file. Instead, the app administrator should provide the keys via environment variables on the server.
+# Start the dashboard
+npm run start --workspace=@ai-reviewer/web
 
-For the best "bring your own key" experience where the key stays private to your repository, use **Option 1: GitHub Action**.
+# Start the bot
+npm run start --workspace=@ai-reviewer/bot
+```
 
 ## License
 

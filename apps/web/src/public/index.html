@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Reviewer Dashboard</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { padding: 10px 15px; background: #238636; color: white; border: none; border-radius: 6px; cursor: pointer; }
+        button:hover { background: #2ea043; }
+        .success { color: #238636; margin-top: 10px; display: none; }
+        .warning { background: #fffbdd; border: 1px solid #d4a017; padding: 10px; border-radius: 6px; margin-bottom: 20px; color: #735c0f; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <h1>AI Code Reviewer Dashboard</h1>
+    <div class="warning">
+        <strong>Security Warning:</strong> This is a demonstration dashboard. In a production environment, it should be protected with GitHub OAuth to ensure only authorized users can set keys for their organizations.
+    </div>
+    <p>Bring your own keys for your repositories.</p>
+
+    <div id="key-form">
+        <div class="form-group">
+            <label for="owner">GitHub Organization or Username</label>
+            <input type="text" id="owner" placeholder="e.g. Blue-Hitbox" required>
+        </div>
+        <div class="form-group">
+            <label for="provider">AI Provider</label>
+            <select id="provider">
+                <option value="openai">OpenAI</option>
+                <option value="claude">Claude (Anthropic)</option>
+                <option value="openrouter">OpenRouter</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="apiKey">API Key</label>
+            <input type="password" id="apiKey" placeholder="sk-..." required>
+        </div>
+        <button onclick="saveKey()">Save API Key</button>
+        <div id="message" class="success">API key saved successfully!</div>
+    </div>
+
+    <script>
+        async function saveKey() {
+            const owner = document.getElementById('owner').value;
+            const provider = document.getElementById('provider').value;
+            const apiKey = document.getElementById('apiKey').value;
+
+            if (!owner || !apiKey) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/keys', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ owner, provider, apiKey })
+                });
+
+                if (response.ok) {
+                    document.getElementById('message').style.display = 'block';
+                    setTimeout(() => {
+                        document.getElementById('message').style.display = 'none';
+                    }, 3000);
+                } else {
+                    alert('Failed to save key');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-import { getProvider } from './ai';
+import { getProvider } from '@ai-reviewer/core';
 
 async function run() {
   try {

@@ -1,10 +1,24 @@
 import { Probot } from "probot";
-import { getProvider } from "./ai";
+import { getProvider } from "@ai-reviewer/core";
+import axios from "axios";
 
 interface Config {
   provider?: string;
   model?: string;
-  apiKey?: string;
+}
+
+async function getUserApiKey(owner: string, provider: string): Promise<string | undefined> {
+  const dashboardUrl = process.env.DASHBOARD_URL || "http://localhost:3000";
+  const apiSecret = process.env.DASHBOARD_API_SECRET;
+
+  try {
+    const response = await axios.get(`${dashboardUrl}/api/keys/${owner}/${provider}`, {
+      headers: apiSecret ? { 'Authorization': `Bearer ${apiSecret}` } : {}
+    });
+    return response.data.apiKey;
+  } catch (error) {
+    return undefined;
+  }
 }
 
 export = (app: Probot) => {
@@ -16,8 +30,12 @@ export = (app: Probot) => {
       const config = await context.config<Config>("ai-reviewer.yml", {
         provider: process.env.AI_PROVIDER || "openai",
         model: process.env.AI_MODEL,
-        apiKey: undefined,
       });
+
+      const providerName = config?.provider || "openai";
+
+      // Fetch API key from dashboard
+      const userApiKey = await getUserApiKey(owner, providerName);
 
       // Get the diff of the pull request
       const response = await context.octokit.pulls.get({
@@ -49,12 +67,12 @@ export = (app: Probot) => {
       }
 
       const provider = getProvider({
-        provider: config?.provider,
+        provider: providerName,
         model: config?.model,
-        apiKey: config?.apiKey,
+        apiKey: userApiKey,
       });
 
-      app.log.info(`Requesting review from ${config?.provider || 'default'} (model: ${config?.model || 'default'})...`);
+      app.log.info(`Requesting review from ${providerName} (model: ${config?.model || 'default'})...`);
 
       const review = await provider.reviewCode(diff);
 
@@ -63,7 +81,7 @@ export = (app: Probot) => {
         owner,
         repo,
         issue_number: pull_number,
-        body: `### AI Code Review (${config?.provider || 'default'}${config?.model ? ` - ${config.model}` : ''})\n\n${review}`,
+        body: `### AI Code Review (${providerName}${config?.model ? ` - ${config.model}` : ''})\n\n${review}`,
       });
 
       app.log.info(`Review posted for PR #${pull_number}`);
@@ -75,7 +93,7 @@ export = (app: Probot) => {
         owner,
         repo,
         issue_number: pull_number,
-        body: `❌ AI Code Review failed: ${errorMessage}`,
+        body: `❌ AI Code Review failed: ${errorMessage}. Make sure you have set your API key in the dashboard correctly.`,
       });
     }
   });
