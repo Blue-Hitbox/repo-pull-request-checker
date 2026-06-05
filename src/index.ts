@@ -1,11 +1,22 @@
 import { Probot } from "probot";
 import { getProvider } from "./ai";
 
+interface Config {
+  provider?: string;
+  model?: string;
+}
+
 export = (app: Probot) => {
   app.on(["pull_request.opened", "pull_request.synchronize"], async (context) => {
     const { owner, repo, pull_number } = context.pullRequest();
 
     try {
+      // Get the configuration from the repository
+      const config = await context.config<Config>("ai-reviewer.yml", {
+        provider: process.env.AI_PROVIDER || "openai",
+        model: process.env.AI_MODEL,
+      });
+
       // Get the diff of the pull request
       const response = await context.octokit.pulls.get({
         owner,
@@ -35,8 +46,8 @@ export = (app: Probot) => {
         return;
       }
 
-      const provider = getProvider();
-      app.log.info(`Requesting review from ${process.env.AI_PROVIDER || 'openai'}...`);
+      const provider = getProvider(config?.provider, config?.model);
+      app.log.info(`Requesting review from ${config?.provider} (model: ${config?.model || 'default'})...`);
 
       const review = await provider.reviewCode(diff);
 
@@ -45,7 +56,7 @@ export = (app: Probot) => {
         owner,
         repo,
         issue_number: pull_number,
-        body: `### AI Code Review\n\n${review}`,
+        body: `### AI Code Review (${config?.provider}${config?.model ? ` - ${config.model}` : ''})\n\n${review}`,
       });
 
       app.log.info(`Review posted for PR #${pull_number}`);

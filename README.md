@@ -1,13 +1,13 @@
 # AI GitHub Code Reviewer
 
-A GitHub App that automatically reviews pull requests using AI. It supports OpenAI, Claude (Anthropic), and OpenRouter, allowing you to bring your own API keys.
+A GitHub App that automatically reviews pull requests using AI. It supports OpenAI, Claude (Anthropic), and OpenRouter, allowing you to bring your own API keys and choose your own models.
 
 ## Features
 
 - **Automated Reviews**: Triggered on pull request creation and synchronization.
 - **Multiple AI Providers**: Supports OpenAI, Claude, and OpenRouter.
+- **Per-Repository Configuration**: Users can choose the AI provider and model for each repository.
 - **Actionable Feedback**: Focuses on bugs, security, and performance.
-- **Customizable**: Choose your preferred AI model and provider.
 
 ## Setup
 
@@ -21,6 +21,7 @@ A GitHub App that automatically reviews pull requests using AI. It supports Open
    - **Webhook secret**: A secure random string.
 3. **Permissions**:
    - **Pull requests**: Read & write.
+   - **Contents**: Read-only (to read `.github/ai-reviewer.yml`).
    - **Metadata**: Read-only.
 4. **Subscribe to events**:
    - Pull request.
@@ -38,6 +39,8 @@ npm install
 
 ### 3. Configuration
 
+#### Server-side (.env)
+
 Copy the `.env.example` file to `.env` and fill in the values:
 
 ```bash
@@ -45,11 +48,24 @@ cp .env.example .env
 ```
 
 - `APP_ID`: Your GitHub App ID.
-- `PRIVATE_KEY`: Your GitHub App Private Key (replace newlines with `\n` or use a multi-line string in some environments).
+- `PRIVATE_KEY`: Your GitHub App Private Key.
 - `WEBHOOK_SECRET`: Your Webhook Secret.
-- `AI_PROVIDER`: `openai`, `claude`, or `openrouter`.
-- `AI_API_KEY`: Your API key for the chosen provider.
-- `AI_MODEL`: (Optional) The model to use (e.g., `gpt-4-turbo`, `claude-3-5-sonnet-20240620`).
+- `OPENAI_API_KEY`: Your OpenAI API key.
+- `ANTHROPIC_API_KEY`: Your Anthropic API key.
+- `OPENROUTER_API_KEY`: Your OpenRouter API key.
+- `AI_PROVIDER`: Default provider (e.g., `openai`).
+- `AI_MODEL`: Default model (e.g., `gpt-4o`).
+
+#### Repository-side (.github/ai-reviewer.yml)
+
+Users can customize the review per repository by creating a `.github/ai-reviewer.yml` file:
+
+```yaml
+provider: claude
+model: claude-3-5-sonnet-20240620
+```
+
+Supported providers: `openai`, `claude`, `openrouter`.
 
 ### 4. Running the App
 
@@ -61,14 +77,9 @@ npm run build
 npm start
 ```
 
-For development with hot-reloading:
-```bash
-npm run dev
-```
-
 ## How it Works
 
-When a pull request is opened or updated, the app fetches the diff and sends it to the configured AI provider. The AI generates a review focusing on:
+When a pull request is opened or updated, the app fetches the diff and reads the configuration from the repository. It then sends the diff to the configured AI provider. The AI generates a review focusing on:
 - Potential bugs
 - Security vulnerabilities
 - Performance optimizations
