@@ -1,20 +1,44 @@
-# AI GitHub Code Reviewer (Monorepo)
+# AI Code Reviewer Platform
 
-A unified AI code review platform. This project uses a "Brain" architecture where a central SvelteKit Web App handles all AI interactions, while a GitHub App and Terminal CLI act as clients.
+A unified AI code review platform. This project uses a "Brain" architecture where a central SvelteKit Web App handles all AI interactions, while a Terminal CLI acts as the client.
+
+## Architecture
+
+- **The Brain (`apps/web`)**: A SvelteKit + PostgreSQL app that manages user API keys and performs the actual AI review process.
+- **The Client (`apps/cli`)**: A terminal application for local git reviews or integration with GitLab, Gitea, GitHub, etc.
+- **Shared Logic (`packages/ai-core`)**: Centralized AI provider implementations.
 
 ## Features
 
-- **Centralized Key Management**: Manage API keys in a central dashboard.
+- **Centralized Key Management**: Provide your API keys once in the dashboard.
 - **CLI Login**: Authenticate the terminal app with a token for a seamless experience.
-- **Repository Access**: Control which repositories are allowed to be reviewed.
-- **Shared Review Process**: Consistent AI logic across all integration methods.
-- **Secure**: Keys are encrypted at rest in a PostgreSQL database.
+- **Shared Review Process**: The same AI logic and prompts are used across all git workflows.
+- **Secure**: API keys are encrypted at rest and never stored in client apps.
+
+---
+
+## Quick Start (Development)
+
+1. **Prerequisites**: PostgreSQL instance running (use `docker-compose up -d`).
+2. **Setup**:
+    ```bash
+    npm install
+    # Create apps/web/.env with DATABASE_URL, ENCRYPTION_KEY, DASHBOARD_API_SECRET
+    npx prisma migrate dev --schema=apps/web/prisma/schema.prisma
+    ```
+3. **Run**:
+    ```bash
+    npm run dev
+    ```
+    This will start both the SvelteKit dashboard and the CLI in development mode.
 
 ---
 
 ## Integration Methods
 
-### 1. Terminal CLI (`apps/cli`)
+### Terminal CLI (`apps/cli`)
+
+Use the CLI to review changes from any git provider.
 
 #### Setup
 
@@ -33,26 +57,12 @@ alias ai-review="DASHBOARD_URL=http://localhost:5173 DASHBOARD_API_SECRET=your-s
 #### Usage
 
 ```bash
-# Review changes (owner is automatically determined after login)
+# Review local git changes (owner automatically determined)
 ai-review diff
+
+# Review a specific diff via stdin
+git diff HEAD~1 | ai-review stdin
 ```
-
-### 2. GitHub App Client (`apps/bot`)
-
-1. Go to `apps/bot`.
-2. Configure `.env` (DASHBOARD_URL, DASHBOARD_API_SECRET, GitHub App credentials).
-3. Start: `npm run dev`.
-
----
-
-## Setup (The Brain)
-
-1. **Database**: Start PostgreSQL (e.g., `docker-compose up -d`).
-2. **Web App**:
-    - Go to `apps/web`.
-    - Configure `.env` (DATABASE_URL, ENCRYPTION_KEY, DASHBOARD_API_SECRET).
-    - Run: `npx prisma migrate dev`.
-    - Start: `npm run dev`.
 
 ## License
 

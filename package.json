@@ -7,7 +7,10 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces",
-    "start": "npm run start --workspace=apps/bot",
-    "dev": "npm run dev --workspace=apps/bot"
+    "dev": "concurrently \"npm run dev --workspace=web\" \"npm run dev --workspace=@ai-reviewer/cli\"",
+    "start:web": "npm run start --workspace=web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   }
 }
