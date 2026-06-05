@@ -1,91 +1,89 @@
 # AI GitHub Code Reviewer
 
-A GitHub App that automatically reviews pull requests using AI. It supports OpenAI, Claude (Anthropic), and OpenRouter, allowing you to bring your own API keys and choose your own models.
+A GitHub App and GitHub Action that automatically reviews pull requests using AI. It supports OpenAI, Claude (Anthropic), and OpenRouter, allowing you to bring your own API keys.
 
 ## Features
 
-- **Automated Reviews**: Triggered on pull request creation and synchronization.
+- **Automated Reviews**: Triggered on pull request events.
 - **Multiple AI Providers**: Supports OpenAI, Claude, and OpenRouter.
-- **Per-Repository Configuration**: Users can choose the AI provider and model for each repository.
+- **Bring Your Own Key**: Provide your API key via repository configuration or GitHub Secrets.
 - **Actionable Feedback**: Focuses on bugs, security, and performance.
 
-## Setup
+## Choose Your Integration
 
-### 1. Create a GitHub App
+You can use this tool either as a **GitHub App** (centrally hosted) or a **GitHub Action** (run in your own CI).
 
-1. Go to your GitHub Settings > Developer settings > GitHub Apps > New GitHub App.
-2. Set the following:
-   - **GitHub App name**: Your choice (e.g., `My AI Reviewer`).
-   - **Homepage URL**: Any URL (e.g., your repo URL).
-   - **Webhook**: Enable it and provide a Webhook URL (use smee.io for local development).
-   - **Webhook secret**: A secure random string.
-3. **Permissions**:
-   - **Pull requests**: Read & write.
-   - **Contents**: Read-only (to read `.github/ai-reviewer.yml`).
-   - **Metadata**: Read-only.
-4. **Subscribe to events**:
-   - Pull request.
-5. Create the app, then:
-   - Generate a **Private key** and download it.
-   - Note the **App ID**, **Client ID**, and **Client Secret**.
+---
 
-### 2. Installation
+### Option 1: GitHub Action (Recommended for Security)
 
-```bash
-git clone https://github.com/Blue-Hitbox/repo-pull-request-checker.git
-cd repo-pull-request-checker
-npm install
+Using the GitHub Action is the most secure way to "bring your own key" because your API key is stored in your own repository's secrets.
+
+#### Setup
+
+1. In your repository, go to **Settings > Secrets and variables > Actions**.
+2. Add a new repository secret named `AI_API_KEY` with your AI provider's API key.
+3. Create a workflow file (e.g., `.github/workflows/ai-review.yml`):
+
+```yaml
+name: AI Code Review
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - name: AI Reviewer
+        uses: Blue-Hitbox/repo-pull-request-checker@main # Use the latest version
+        with:
+          provider: 'openai' # or 'claude', 'openrouter'
+          model: 'gpt-4o'
+          api_key: ${{ secrets.AI_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-### 3. Configuration
+---
 
-#### Server-side (.env)
+### Option 2: GitHub App
 
-Copy the `.env.example` file to `.env` and fill in the values:
+The GitHub App is useful if you want to manage multiple repositories from a single installation.
 
-```bash
-cp .env.example .env
-```
+#### Setup
 
-- `APP_ID`: Your GitHub App ID.
-- `PRIVATE_KEY`: Your GitHub App Private Key.
-- `WEBHOOK_SECRET`: Your Webhook Secret.
-- `OPENAI_API_KEY`: Your OpenAI API key.
-- `ANTHROPIC_API_KEY`: Your Anthropic API key.
-- `OPENROUTER_API_KEY`: Your OpenRouter API key.
-- `AI_PROVIDER`: Default provider (e.g., `openai`).
-- `AI_MODEL`: Default model (e.g., `gpt-4o`).
+1. Create a GitHub App in your developer settings.
+2. **Permissions**: Pull requests (write), Contents (read), Metadata (read).
+3. **Events**: Pull request.
+4. Deploy the app to a server (e.g., Vercel, Railway, or your own VPS).
+5. Configure the server using a `.env` file (see `.env.example`).
 
-#### Repository-side (.github/ai-reviewer.yml)
+#### Per-Repository Configuration
 
-Users can customize the review per repository by creating a `.github/ai-reviewer.yml` file:
+Users can customize the review by creating a `.github/ai-reviewer.yml` file in their repository:
 
 ```yaml
 provider: claude
 model: claude-3-5-sonnet-20240620
+apiKey: your-api-key-here # ⚠️ Warning: Plain text keys in repo are NOT recommended. Use the GitHub Action for better security.
 ```
 
-Supported providers: `openai`, `claude`, `openrouter`.
+## Configuration Summary
 
-### 4. Running the App
+### AI Providers
 
-```bash
-# Build the project
-npm run build
+- `openai`: Requires `OPENAI_API_KEY`.
+- `claude` / `anthropic`: Requires `ANTHROPIC_API_KEY`.
+- `openrouter`: Requires `OPENROUTER_API_KEY`.
 
-# Start the app
-npm start
-```
+### Security Note
 
-## How it Works
+When using the **GitHub App** method, we strongly recommend against placing your `apiKey` in plain text in the `.github/ai-reviewer.yml` file. Instead, the app administrator should provide the keys via environment variables on the server.
 
-When a pull request is opened or updated, the app fetches the diff and reads the configuration from the repository. It then sends the diff to the configured AI provider. The AI generates a review focusing on:
-- Potential bugs
-- Security vulnerabilities
-- Performance optimizations
-- Code readability and maintainability
-
-The review is then posted as a comment on the pull request.
+For the best "bring your own key" experience where the key stays private to your repository, use **Option 1: GitHub Action**.
 
 ## License
 

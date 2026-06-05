@@ -4,6 +4,7 @@ import { getProvider } from "./ai";
 interface Config {
   provider?: string;
   model?: string;
+  apiKey?: string;
 }
 
 export = (app: Probot) => {
@@ -15,6 +16,7 @@ export = (app: Probot) => {
       const config = await context.config<Config>("ai-reviewer.yml", {
         provider: process.env.AI_PROVIDER || "openai",
         model: process.env.AI_MODEL,
+        apiKey: undefined,
       });
 
       // Get the diff of the pull request
@@ -46,8 +48,13 @@ export = (app: Probot) => {
         return;
       }
 
-      const provider = getProvider(config?.provider, config?.model);
-      app.log.info(`Requesting review from ${config?.provider} (model: ${config?.model || 'default'})...`);
+      const provider = getProvider({
+        provider: config?.provider,
+        model: config?.model,
+        apiKey: config?.apiKey,
+      });
+
+      app.log.info(`Requesting review from ${config?.provider || 'default'} (model: ${config?.model || 'default'})...`);
 
       const review = await provider.reviewCode(diff);
 
@@ -56,7 +63,7 @@ export = (app: Probot) => {
         owner,
         repo,
         issue_number: pull_number,
-        body: `### AI Code Review (${config?.provider}${config?.model ? ` - ${config.model}` : ''})\n\n${review}`,
+        body: `### AI Code Review (${config?.provider || 'default'}${config?.model ? ` - ${config.model}` : ''})\n\n${review}`,
       });
 
       app.log.info(`Review posted for PR #${pull_number}`);

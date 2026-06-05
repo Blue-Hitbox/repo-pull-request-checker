@@ -81,28 +81,29 @@ export class OpenRouterProvider implements AIProvider {
   }
 }
 
-export function getProvider(providerName?: string, modelName?: string): AIProvider {
-  const provider = providerName || process.env.AI_PROVIDER || 'openai';
+export function getProvider(options: { provider?: string, model?: string, apiKey?: string }): AIProvider {
+  const provider = options.provider || process.env.AI_PROVIDER || 'openai';
+  const modelName = options.model || process.env.AI_MODEL;
 
-  let apiKey: string | undefined;
+  let apiKey: string | undefined = options.apiKey;
   let defaultModel: string | undefined;
 
   switch (provider.toLowerCase()) {
     case 'openai':
-      apiKey = process.env.OPENAI_API_KEY || process.env.AI_API_KEY;
+      apiKey = apiKey || process.env.OPENAI_API_KEY || process.env.AI_API_KEY;
       defaultModel = 'gpt-4o';
-      if (!apiKey) throw new Error('OPENAI_API_KEY is not set');
+      if (!apiKey) throw new Error('OpenAI API Key is not provided. Set OPENAI_API_KEY env or apiKey in config.');
       return new OpenAIProvider(apiKey, modelName || defaultModel);
     case 'claude':
     case 'anthropic':
-      apiKey = process.env.ANTHROPIC_API_KEY || process.env.AI_API_KEY;
+      apiKey = apiKey || process.env.ANTHROPIC_API_KEY || process.env.AI_API_KEY;
       defaultModel = 'claude-3-5-sonnet-20240620';
-      if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
+      if (!apiKey) throw new Error('Anthropic API Key is not provided. Set ANTHROPIC_API_KEY env or apiKey in config.');
       return new ClaudeProvider(apiKey, modelName || defaultModel);
     case 'openrouter':
-      apiKey = process.env.OPENROUTER_API_KEY || process.env.AI_API_KEY;
+      apiKey = apiKey || process.env.OPENROUTER_API_KEY || process.env.AI_API_KEY;
       defaultModel = 'openai/gpt-3.5-turbo';
-      if (!apiKey) throw new Error('OPENROUTER_API_KEY is not set');
+      if (!apiKey) throw new Error('OpenRouter API Key is not provided. Set OPENROUTER_API_KEY env or apiKey in config.');
       return new OpenRouterProvider(apiKey, modelName || defaultModel);
     default:
       throw new Error(`Unsupported AI provider: ${provider}`);

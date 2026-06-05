@@ -1,0 +1,20 @@
+name: 'AI Code Reviewer'
+description: 'Review pull requests using AI (OpenAI, Claude, OpenRouter)'
+inputs:
+  provider:
+    description: 'AI provider (openai, claude, openrouter)'
+    required: false
+    default: 'openai'
+  model:
+    description: 'AI model to use'
+    required: false
+  api_key:
+    description: 'API key for the AI provider'
+    required: true
+  github_token:
+    description: 'GitHub token'
+    required: false
+    default: ${{ github.token }}
+runs:
+  using: 'node20'
+  main: 'dist/action.js'
