@@ -1,13 +1,14 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-import { getProvider } from '@ai-reviewer/core';
+import axios from 'axios';
 
 async function run() {
   try {
     const providerName = core.getInput('provider');
     const modelName = core.getInput('model');
-    const apiKey = core.getInput('api_key');
     const githubToken = core.getInput('github_token');
+    const dashboardUrl = core.getInput('dashboard_url') || process.env.DASHBOARD_URL || "http://localhost:3000";
+    const apiSecret = core.getInput('dashboard_api_secret') || process.env.DASHBOARD_API_SECRET;
 
     const context = github.context;
     if (context.payload.pull_request == null) {
@@ -34,26 +35,31 @@ async function run() {
       return;
     }
 
-    const provider = getProvider({
+    core.info(`Requesting review from dashboard for ${context.repo.owner}...`);
+
+    const response = await axios.post(`${dashboardUrl}/api/review`, {
+      owner: context.repo.owner,
+      diff: diffString,
       provider: providerName,
-      model: modelName,
-      apiKey: apiKey,
+      model: modelName
+    }, {
+      headers: apiSecret ? { 'Authorization': `Bearer ${apiSecret}` } : {}
     });
 
-    core.info(`Requesting review from ${providerName}...`);
-    const review = await provider.reviewCode(diffString);
+    const review = response.data.review;
 
     core.info('Posting review comment...');
     await octokit.rest.issues.createComment({
       owner: context.repo.owner,
       repo: context.repo.repo,
       issue_number: pullRequest.number,
-      body: `### AI Code Review (${providerName}${modelName ? ` - ${modelName}` : ''})\n\n${review}`,
+      body: `### AI Code Review\n\n${review}`,
     });
 
     core.info('Review posted successfully.');
   } catch (error: any) {
-    core.setFailed(error.message);
+    const errorMessage = error.response?.data?.error || error.message;
+    core.setFailed(errorMessage);
   }
 }
 

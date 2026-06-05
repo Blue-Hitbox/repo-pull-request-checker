@@ -13,8 +13,9 @@
   },
   "dependencies": {
     "@ai-reviewer/core": "*",
-    "commander": "^12.1.0",
+    "axios": "^1.17.0",
     "chalk": "^4.1.2",
+    "commander": "^12.1.0",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {

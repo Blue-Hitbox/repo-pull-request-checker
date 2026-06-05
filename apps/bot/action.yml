@@ -1,5 +1,5 @@
 name: 'AI Code Reviewer'
-description: 'Review pull requests using AI (OpenAI, Claude, OpenRouter)'
+description: 'Review pull requests using AI via central dashboard'
 inputs:
   provider:
     description: 'AI provider (openai, claude, openrouter)'
@@ -8,9 +8,12 @@ inputs:
   model:
     description: 'AI model to use'
     required: false
-  api_key:
-    description: 'API key for the AI provider'
-    required: true
+  dashboard_url:
+    description: 'URL of the central dashboard'
+    required: false
+  dashboard_api_secret:
+    description: 'Secret for dashboard API access'
+    required: false
   github_token:
     description: 'GitHub token'
     required: false
