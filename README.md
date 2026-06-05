@@ -1,53 +1,70 @@
 # AI GitHub Code Reviewer (Monorepo)
 
-A GitHub App and GitHub Action that automatically reviews pull requests using AI. It supports OpenAI, Claude (Anthropic), and OpenRouter.
+A GitHub App, GitHub Action, and Terminal CLI that automatically reviews code using AI. It supports OpenAI, Claude (Anthropic), and OpenRouter.
 
 This project is organized as a monorepo:
 - `apps/bot`: The GitHub App (Probot).
 - `apps/web`: The Dashboard website (SvelteKit + PostgreSQL).
+- `apps/cli`: The Terminal CLI for local development and other git providers.
 - `packages/ai-core`: Shared AI provider logic.
 
 ## Features
 
-- **Automated Reviews**: Triggered on pull request events.
+- **Automated Reviews**: Triggered on pull request events (GitHub App/Action).
+- **Terminal CLI**: Review local changes or integrate with GitLab, Gitea, etc.
 - **Multiple AI Providers**: Supports OpenAI, Claude, and OpenRouter.
-- **Bring Your Own Key**: Users provide their API keys via a SvelteKit dashboard.
+- **Bring Your Own Key**: Users provide their API keys via a SvelteKit dashboard or CLI flags.
 - **PostgreSQL Storage**: Securely store and encrypt user keys using Prisma.
-- **Monorepo Architecture**: Scalable and easy to manage.
+
+---
 
 ## Integration Methods
 
-### 1. GitHub App (with Dashboard)
+### 1. Terminal CLI (`apps/cli`)
 
-#### Prerequisites
+Use the CLI to review local changes or integrate with any git provider (GitLab, Gitea, etc.).
 
-- **PostgreSQL**: A running instance of PostgreSQL.
-- **Docker**: (Optional) Use the provided `docker-compose.yml`.
+#### Installation
+
+```bash
+cd apps/cli
+npm install
+npm run build
+alias ai-review="node $(pwd)/dist/index.js"
+```
+
+#### Usage
+
+```bash
+# Review unstaged changes
+ai-review diff
+
+# Review staged changes
+ai-review diff --staged
+
+# Review a specific diff via stdin (useful for GitLab/Gitea CI)
+git diff HEAD~1 | ai-review stdin --provider claude --key your-api-key
+```
+
+### 2. GitHub App (with Dashboard)
+
+The GitHub App uses a central dashboard where users can securely save their API keys.
 
 #### Dashboard Setup (`apps/web`)
 
 1. Go to `apps/web`.
-2. Configure `.env`:
-   ```bash
-   DATABASE_URL="postgresql://user:password@localhost:5432/ai_reviewer?schema=public"
-   ENCRYPTION_KEY="your-secret-key-for-encryption"
-   DASHBOARD_API_SECRET="shared-secret-between-bot-and-dashboard"
-   ```
+2. Configure `.env` (DATABASE_URL, ENCRYPTION_KEY, DASHBOARD_API_SECRET).
 3. Run migrations: `npx prisma migrate dev`.
-4. Start the dashboard: `npm run dev` (runs on http://localhost:5173).
+4. Start: `npm run dev`.
 
 #### Bot Setup (`apps/bot`)
 
-1. Configure `.env`:
-   ```bash
-   DASHBOARD_URL=http://localhost:5173
-   DASHBOARD_API_SECRET=shared-secret-between-bot-and-dashboard
-   ```
-2. Start the bot: `npm run dev`.
+1. Configure `.env` (DASHBOARD_URL, DASHBOARD_API_SECRET, GitHub App credentials).
+2. Start: `npm run dev`.
 
-### 2. GitHub Action
+### 3. GitHub Action
 
-The GitHub Action uses GitHub Secrets for API keys.
+Use the Action in your GitHub workflows with repository secrets.
 
 ```yaml
 uses: Blue-Hitbox/repo-pull-request-checker/apps/bot@main
@@ -56,11 +73,7 @@ with:
   api_key: ${{ secrets.AI_API_KEY }}
 ```
 
-## Security
-
-- **Encryption**: API keys are encrypted at rest in the PostgreSQL database using AES encryption.
-- **Authentication**: Communication between the bot and the dashboard is secured via `DASHBOARD_API_SECRET`.
-- **Hashed Verification**: Keys are also hashed to prevent duplicate entries.
+---
 
 ## License
 
