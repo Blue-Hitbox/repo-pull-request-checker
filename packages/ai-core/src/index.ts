@@ -62,22 +62,36 @@ export class OpenRouterProvider implements AIProvider {
   }
 
   async reviewCode(diff: string): Promise<string> {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [
-          { role: 'system', content: 'You are a senior software engineer. Review the following code diff and provide concise, actionable feedback. Focus on bugs, security issues, and performance improvements.' },
-          { role: 'user', content: `Review this diff:\n\n${diff}` }
-        ],
-      }),
-    });
-    const data = await response.json() as any;
-    return data.choices?.[0]?.message?.content || 'No feedback provided.';
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            { role: 'system', content: 'You are a senior software engineer. Review the following code diff and provide concise, actionable feedback. Focus on bugs, security issues, and performance improvements.' },
+            { role: 'user', content: `Review this diff:\n\n${diff}` }
+          ],
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json() as any;
+        throw new Error(`OpenRouter API error: ${response.status} ${errorData?.error?.message || response.statusText}`);
+      }
+
+      const data = await response.json() as any;
+      return data.choices?.[0]?.message?.content || 'No feedback provided.';
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 }
 
@@ -92,18 +106,18 @@ export function getProvider(options: { provider?: string, model?: string, apiKey
     case 'openai':
       apiKey = apiKey || process.env.OPENAI_API_KEY || process.env.AI_API_KEY;
       defaultModel = 'gpt-4o';
-      if (!apiKey) throw new Error('OpenAI API Key is not provided. Set OPENAI_API_KEY env or apiKey in config.');
+      if (!apiKey) throw new Error('OpenAI API Key is not provided.');
       return new OpenAIProvider(apiKey, modelName || defaultModel);
     case 'claude':
     case 'anthropic':
       apiKey = apiKey || process.env.ANTHROPIC_API_KEY || process.env.AI_API_KEY;
       defaultModel = 'claude-3-5-sonnet-20240620';
-      if (!apiKey) throw new Error('Anthropic API Key is not provided. Set ANTHROPIC_API_KEY env or apiKey in config.');
+      if (!apiKey) throw new Error('Anthropic API Key is not provided.');
       return new ClaudeProvider(apiKey, modelName || defaultModel);
     case 'openrouter':
       apiKey = apiKey || process.env.OPENROUTER_API_KEY || process.env.AI_API_KEY;
       defaultModel = 'openai/gpt-3.5-turbo';
-      if (!apiKey) throw new Error('OpenRouter API Key is not provided. Set OPENROUTER_API_KEY env or apiKey in config.');
+      if (!apiKey) throw new Error('OpenRouter API Key is not provided.');
       return new OpenRouterProvider(apiKey, modelName || defaultModel);
     default:
       throw new Error(`Unsupported AI provider: ${provider}`);

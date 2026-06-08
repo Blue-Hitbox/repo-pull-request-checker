@@ -11,6 +11,9 @@
     "openai": "^4.71.1"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.11",
     "typescript": "^5.6.3"
   }
 }

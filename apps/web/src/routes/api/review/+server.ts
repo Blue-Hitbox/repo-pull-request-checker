@@ -8,17 +8,20 @@ import { getProvider } from '@ai-reviewer/core';
 export const POST: RequestHandler = async ({ request }) => {
 	const authHeader = request.headers.get('authorization');
 	const apiSecret = env.DASHBOARD_API_SECRET;
+    const encryptionKey = env.ENCRYPTION_KEY;
+
+    if (!encryptionKey) {
+        return json({ error: 'Server configuration error: ENCRYPTION_KEY is missing' }, { status: 500 });
+    }
 
     let user: any;
 
     if (authHeader?.startsWith('Bearer ')) {
         const tokenValue = authHeader.substring(7);
 
-        // 1. Check if it's the dashboard-bot shared secret
         if (apiSecret && tokenValue === apiSecret) {
-            // Authorized bot, owner must be provided in body
+            // Authorized bot/internal
         } else {
-            // 2. Check if it's a CLI token
             const cliToken = await prisma.cliToken.findUnique({
                 where: { token: tokenValue },
                 include: { user: true }
@@ -33,13 +36,35 @@ export const POST: RequestHandler = async ({ request }) => {
         return json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-	const { owner, provider: providerName, model: modelName, diff } = await request.json();
+	const { owner, provider: providerName, model: modelName, diff, repoName } = await request.json();
 
     const targetOwner = user ? user.username : owner;
 
-	if (!targetOwner || !diff) {
-		return json({ error: 'Missing owner or diff' }, { status: 400 });
+	if (!targetOwner) {
+		return json({ error: 'Missing owner' }, { status: 400 });
 	}
+
+    if (!diff) {
+        return json({ error: 'Missing diff' }, { status: 400 });
+    }
+
+    // 0. Check if repository is enabled (if repoName is provided)
+    if (repoName) {
+        const dbUser = await prisma.user.findUnique({ where: { username: targetOwner } });
+        if (dbUser) {
+            const repo = await prisma.repository.findUnique({
+                where: {
+                    userId_name: {
+                        userId: dbUser.id,
+                        name: repoName
+                    }
+                }
+            });
+            if (repo && !repo.isEnabled) {
+                return json({ error: `Review disabled for repository: ${repoName}` }, { status: 403 });
+            }
+        }
+    }
 
 	// 1. Fetch the user's API key
 	const apiKeyRecord = await prisma.apiKey.findFirst({
@@ -54,7 +79,6 @@ export const POST: RequestHandler = async ({ request }) => {
 	let apiKey: string | undefined;
 
 	if (apiKeyRecord) {
-		const encryptionKey = env.ENCRYPTION_KEY || 'default-secret';
 		const bytes = CryptoJS.AES.decrypt(apiKeyRecord.encryptedKey, encryptionKey);
 		apiKey = bytes.toString(CryptoJS.enc.Utf8);
 	}

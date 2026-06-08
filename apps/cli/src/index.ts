@@ -4,12 +4,14 @@ import chalk from 'chalk';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import axios from 'axios';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
+const execAsync = promisify(exec);
 const program = new Command();
 const CONFIG_PATH = path.join(os.homedir(), '.ai-review-config.json');
 
@@ -45,7 +47,8 @@ program
         console.error(chalk.red('Invalid token.'));
       }
     } catch (error: any) {
-      console.error(chalk.red(`Login failed: ${error.message}`));
+      const msg = error.response?.data?.error || error.message;
+      console.error(chalk.red(`Login failed: ${msg}`));
     }
   });
 
@@ -66,9 +69,9 @@ program
       }
 
       const diffCommand = options.staged ? 'git diff --staged' : 'git diff';
-      const diff = execSync(diffCommand).toString();
+      const { stdout: diff } = await execAsync(diffCommand);
 
-      if (!diff) {
+      if (!diff.trim()) {
         console.log(chalk.yellow('No changes detected.'));
         return;
       }
@@ -95,7 +98,7 @@ program
       }
 
       const diff = fs.readFileSync(0, 'utf8');
-      if (!diff) {
+      if (!diff.trim()) {
         console.log(chalk.yellow('No input received via stdin.'));
         return;
       }

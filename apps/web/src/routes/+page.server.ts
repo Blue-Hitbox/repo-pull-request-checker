@@ -3,6 +3,7 @@ import prisma from '$lib/server/prisma';
 import CryptoJS from 'crypto-js';
 import { env } from '$env/dynamic/private';
 import { v4 as uuidv4 } from 'uuid';
+import { error, fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async () => {
     // In a real app, get current user from session
@@ -19,13 +20,18 @@ export const load: PageServerLoad = async () => {
 
 export const actions: Actions = {
     saveKey: async ({ request }) => {
+        const encryptionKey = env.ENCRYPTION_KEY;
+        if (!encryptionKey) {
+            return fail(500, { error: 'Server configuration error: ENCRYPTION_KEY is missing' });
+        }
+
         const data = await request.formData();
         const username = data.get('username') as string;
         const provider = data.get('provider') as string;
         const apiKey = data.get('apiKey') as string;
 
         if (!username || !provider || !apiKey) {
-            return { success: false, error: 'Missing fields' };
+            return fail(400, { error: 'Missing fields' });
         }
 
         let user = await prisma.user.findUnique({ where: { username } });
@@ -38,7 +44,6 @@ export const actions: Actions = {
             });
         }
 
-        const encryptionKey = env.ENCRYPTION_KEY || 'default-secret';
         const encryptedKey = CryptoJS.AES.encrypt(apiKey, encryptionKey).toString();
         const keyHash = CryptoJS.SHA256(apiKey).toString();
 
@@ -55,7 +60,7 @@ export const actions: Actions = {
         const data = await request.formData();
         const userId = data.get('userId') as string;
 
-        if (!userId) return { success: false };
+        if (!userId) return fail(400);
 
         const token = uuidv4();
         await prisma.cliToken.create({
@@ -70,7 +75,7 @@ export const actions: Actions = {
         const userId = data.get('userId') as string;
         const repoName = data.get('repoName') as string;
 
-        if (!userId || !repoName) return { success: false };
+        if (!userId || !repoName) return fail(400);
 
         const repo = await prisma.repository.findUnique({
             where: { userId_name: { userId, name: repoName } }
