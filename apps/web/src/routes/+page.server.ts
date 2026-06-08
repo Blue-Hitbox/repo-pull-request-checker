@@ -3,7 +3,7 @@ import prisma from '$lib/server/prisma';
 import CryptoJS from 'crypto-js';
 import { env } from '$env/dynamic/private';
 import { v4 as uuidv4 } from 'uuid';
-import { error, fail } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async () => {
     // In a real app, get current user from session
@@ -76,6 +76,11 @@ export const actions: Actions = {
         const repoName = data.get('repoName') as string;
 
         if (!userId || !repoName) return fail(400);
+
+        // Validate repoName format (owner/repo)
+        if (!repoName.includes('/') || repoName.split('/').length !== 2 || repoName.includes(' ')) {
+            return fail(400, { error: 'Invalid repository name. Use "owner/repo" format.' });
+        }
 
         const repo = await prisma.repository.findUnique({
             where: { userId_name: { userId, name: repoName } }

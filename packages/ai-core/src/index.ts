@@ -56,7 +56,7 @@ export class OpenRouterProvider implements AIProvider {
   private apiKey: string;
   private model: string;
 
-  constructor(apiKey: string, model: string = 'openai/gpt-3.5-turbo') {
+  constructor(apiKey: string, model: string = 'openai/gpt-4o') {
     this.apiKey = apiKey;
     this.model = model;
   }
@@ -116,7 +116,7 @@ export function getProvider(options: { provider?: string, model?: string, apiKey
       return new ClaudeProvider(apiKey, modelName || defaultModel);
     case 'openrouter':
       apiKey = apiKey || process.env.OPENROUTER_API_KEY || process.env.AI_API_KEY;
-      defaultModel = 'openai/gpt-3.5-turbo';
+      defaultModel = 'openai/gpt-4o';
       if (!apiKey) throw new Error('OpenRouter API Key is not provided.');
       return new OpenRouterProvider(apiKey, modelName || defaultModel);
     default:

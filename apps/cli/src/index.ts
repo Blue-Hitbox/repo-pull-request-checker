@@ -17,6 +17,7 @@ const CONFIG_PATH = path.join(os.homedir(), '.ai-review-config.json');
 
 function saveConfig(config: any) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+  fs.chmodSync(CONFIG_PATH, 0o600);
 }
 
 function loadConfig() {
@@ -56,6 +57,7 @@ program
   .command('diff')
   .description('Review local git changes')
   .option('-o, --owner <owner>', 'GitHub/GitLab username or organization')
+  .option('-r, --repo <repo>', 'Repository name (e.g. owner/repo)')
   .option('-s, --staged', 'Review staged changes')
   .option('-p, --provider <provider>', 'AI provider (openai, claude, openrouter)', process.env.AI_PROVIDER || 'openai')
   .option('-m, --model <model>', 'AI model to use')
@@ -86,6 +88,7 @@ program
   .command('stdin')
   .description('Review diff from stdin')
   .option('-o, --owner <owner>', 'GitHub/GitLab username or organization')
+  .option('-r, --repo <repo>', 'Repository name (e.g. owner/repo)')
   .option('-p, --provider <provider>', 'AI provider (openai, claude, openrouter)', process.env.AI_PROVIDER || 'openai')
   .option('-m, --model <model>', 'AI model to use')
   .action(async (options) => {
@@ -119,6 +122,7 @@ async function performReview(diff: string, options: any) {
   try {
     const response = await axios.post(`${dashboardUrl}/api/review`, {
       owner: options.owner,
+      repoName: options.repo,
       diff: diff,
       provider: options.provider,
       model: options.model
