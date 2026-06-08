@@ -1,8 +1,14 @@
 import { PrismaClient } from '@prisma/client';
-import { env } from '$env/dynamic/private';
 
-const prisma = new PrismaClient({
-    log: ['query', 'info', 'warn', 'error']
-});
+let prisma: PrismaClient;
+
+if (!global.prisma) {
+  global.prisma = new PrismaClient();
+}
+prisma = global.prisma;
 
 export default prisma;
+
+declare global {
+  var prisma: PrismaClient | undefined;
+}

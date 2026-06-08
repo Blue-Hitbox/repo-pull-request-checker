@@ -15,6 +15,8 @@ const execAsync = promisify(exec);
 const program = new Command();
 const CONFIG_PATH = path.join(os.homedir(), '.ai-review-config.json');
 
+const ALLOWED_PROVIDERS = ['openai', 'claude', 'openrouter'];
+
 function saveConfig(config: any) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
   fs.chmodSync(CONFIG_PATH, 0o600);
@@ -25,6 +27,18 @@ function loadConfig() {
     return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
   }
   return {};
+}
+
+function validateProvider(provider: string) {
+  if (!ALLOWED_PROVIDERS.includes(provider.toLowerCase())) {
+    console.error(chalk.red(`Error: Invalid provider '${provider}'. Allowed providers are: ${ALLOWED_PROVIDERS.join(', ')}`));
+    process.exit(1);
+  }
+}
+
+const envProvider = process.env.AI_PROVIDER;
+if (envProvider && !ALLOWED_PROVIDERS.includes(envProvider.toLowerCase())) {
+  console.warn(chalk.yellow(`Warning: process.env.AI_PROVIDER is set to '${envProvider}', which is not a recognized provider.`));
 }
 
 program
@@ -63,6 +77,7 @@ program
   .option('-m, --model <model>', 'AI model to use')
   .action(async (options) => {
     try {
+      validateProvider(options.provider);
       const config = loadConfig();
       const owner = options.owner || config.username;
 
@@ -93,6 +108,7 @@ program
   .option('-m, --model <model>', 'AI model to use')
   .action(async (options) => {
     try {
+      validateProvider(options.provider);
       const config = loadConfig();
       const owner = options.owner || config.username;
 
@@ -117,7 +133,7 @@ async function performReview(diff: string, options: any) {
   const apiSecret = process.env.DASHBOARD_API_SECRET;
   const token = options.token || apiSecret;
 
-  console.log(chalk.blue(`Requesting review from dashboard for ${options.owner}...`));
+  console.log(chalk.blue(`Requesting review from dashboard for ${options.owner}${options.repo ? ` (${options.repo})` : ''}...`));
 
   try {
     const response = await axios.post(`${dashboardUrl}/api/review`, {

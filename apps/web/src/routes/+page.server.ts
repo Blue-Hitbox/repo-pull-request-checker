@@ -73,13 +73,13 @@ export const actions: Actions = {
     toggleRepo: async ({ request }) => {
         const data = await request.formData();
         const userId = data.get('userId') as string;
-        const repoName = data.get('repoName') as string;
+        const repoName = (data.get('repoName') as string)?.trim();
 
         if (!userId || !repoName) return fail(400);
 
         // Validate repoName format (owner/repo)
         if (!repoName.includes('/') || repoName.split('/').length !== 2 || repoName.includes(' ')) {
-            return fail(400, { error: 'Invalid repository name. Use "owner/repo" format.' });
+            return fail(400, { error: 'Invalid repository name. Use "owner/repo" format (no spaces).' });
         }
 
         const repo = await prisma.repository.findUnique({
