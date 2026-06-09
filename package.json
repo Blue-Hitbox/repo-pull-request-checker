@@ -6,9 +6,14 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
+    "build": "npm run build --workspace=@ai-reviewer/core && npm run build --workspace=web",
+    "build:core": "npm run build --workspace=@ai-reviewer/core",
+    "build:web": "npm run build --workspace=web",
+    "build:cli": "npm run build --workspace=@ai-reviewer/cli",
     "dev": "concurrently \"npm run dev --workspace=web\" \"npm run dev --workspace=@ai-reviewer/cli\"",
-    "start:web": "npm run start --workspace=web"
+    "start:web": "npm run start --workspace=web",
+    "prisma:generate": "npm run prisma:generate --workspace=web",
+    "prisma:migrate": "npm run prisma:migrate --workspace=web"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

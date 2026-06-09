@@ -16,7 +16,35 @@ interface ReviewRequestBody {
 
 const ALLOWED_PROVIDERS = ['openai', 'claude', 'openrouter'];
 
+// Simple in-memory rate limiter
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 20; // requests per window
+const RATE_WINDOW = 60 * 1000; // 1 minute
+
+function getClientIp(request: Request): string {
+	return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+		|| request.headers.get('x-real-ip')
+		|| 'unknown';
+}
+
+function checkRateLimit(key: string): boolean {
+	const now = Date.now();
+	const entry = rateLimitMap.get(key);
+	if (!entry || now > entry.resetAt) {
+		rateLimitMap.set(key, { count: 1, resetAt: now + RATE_WINDOW });
+		return true;
+	}
+	if (entry.count >= RATE_LIMIT) return false;
+	entry.count++;
+	return true;
+}
+
 export const POST: RequestHandler = async ({ request }) => {
+	const clientIp = getClientIp(request);
+	if (!checkRateLimit(clientIp)) {
+		return json({ error: 'Rate limit exceeded. Try again later.' }, { status: 429 });
+	}
+
 	const authHeader = request.headers.get('authorization');
 	const apiSecret = env.DASHBOARD_API_SECRET;
     const encryptionKey = env.ENCRYPTION_KEY;
