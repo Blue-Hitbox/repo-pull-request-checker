@@ -1,6 +1,6 @@
 services:
   # ------------------------------------------
-  # PostgreSQL Database
+  # PostgreSQL Database (local development)
   # ------------------------------------------
   db:
     image: postgres:16-alpine
@@ -28,10 +28,10 @@ services:
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-ai_reviewer}:${POSTGRES_PASSWORD:-change_me_in_production}@db:5432/${POSTGRES_DB:-ai_reviewer}?schema=public
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-ai_reviewer}:${POSTGRES_PASSWORD:-change_me_in_production}@db:5432/${POSTGRES_DB:-ai_reviewer}?schema=public}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       DASHBOARD_API_SECRET: ${DASHBOARD_API_SECRET}
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-development}
       ORIGIN: ${ORIGIN:-http://localhost:3000}
       PORT: 3000
     ports:

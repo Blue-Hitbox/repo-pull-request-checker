@@ -1,32 +1,20 @@
 # Production Docker Compose for Coolify
 # Coolify manages networking, SSL, and reverse proxy automatically.
-# Use this file when deploying via Coolify's Docker Compose feature.
+#
+# Required environment variables (set in Coolify):
+#   DATABASE_URL       - Full PostgreSQL connection string
+#   ENCRYPTION_KEY     - 64-char hex string for AES-256 encryption
+#   DASHBOARD_API_SECRET - Secret for CLI/bot authorization
+#   ORIGIN             - Public URL (e.g. https://reviewer.yourdomain.com)
 
 services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app-network
-
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      DATABASE_URL: ${DATABASE_URL}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       DASHBOARD_API_SECRET: ${DASHBOARD_API_SECRET}
       NODE_ENV: production
@@ -34,24 +22,12 @@ services:
       PORT: 3000
     expose:
       - "3000"
-    depends_on:
-      db:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 30s
     labels:
       - "coolify.managed=true"
       - "coolify.type=application"
-    networks:
-      - app-network
-
-volumes:
-  postgres_data:
-
-networks:
-  app-network:
-    driver: bridge
