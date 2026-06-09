@@ -1,0 +1,51 @@
+# Version control
+.git
+.gitignore
+
+# Node modules (will be installed in container)
+node_modules
+*/node_modules
+*/*/node_modules
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.production
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.md
+
+# Documentation
+*.md
+LICENSE
+
+# Tests
+**/*.test.ts
+**/*.spec.ts
+**/__tests__
+**/jest.config.js
+
+# Development files
+docker-compose*.yml
+Dockerfile*
+Caddyfile
+
+# Build artifacts (will be built in container)
+apps/web/.svelte-kit
+apps/web/build
+apps/cli/dist
+packages/ai-core/dist
+
+# Misc
+*.log
+.cache
+tmp
+temp

@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  githubId  Int      @unique
+  username  String   @unique
+  createdAt DateTime @default(now())
+  apiKeys   ApiKey[]
+  tokens    CliToken[]
+  repos     Repository[]
+
+  @@map("users")
+}
+
+model CliToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@map("cli_tokens")
+}
+
+model Repository {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String   // full name e.g. "owner/repo"
+  isEnabled Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, name])
+  @@map("repositories")
+}
+
+model ApiKey {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   String
+  keyHash    String
+  encryptedKey String
+  keyPrefix  String
+  label      String?
+  createdAt  DateTime  @default(now())
+  lastUsed   DateTime?
+  expiresAt  DateTime?
+
+  @@unique([userId, provider])
+  @@map("api_keys")
+}

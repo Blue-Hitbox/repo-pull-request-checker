@@ -1,0 +1,33 @@
+# Production Docker Compose for Coolify
+# Coolify manages networking, SSL, and reverse proxy automatically.
+#
+# Required environment variables (set in Coolify):
+#   DATABASE_URL       - Full PostgreSQL connection string
+#   ENCRYPTION_KEY     - 64-char hex string for AES-256 encryption
+#   DASHBOARD_API_SECRET - Secret for CLI/bot authorization
+#   ORIGIN             - Public URL (e.g. https://reviewer.yourdomain.com)
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      DASHBOARD_API_SECRET: ${DASHBOARD_API_SECRET}
+      NODE_ENV: production
+      ORIGIN: ${ORIGIN}
+      PORT: 3000
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "coolify.managed=true"
+      - "coolify.type=application"
